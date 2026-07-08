@@ -1,54 +1,56 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { ProjectVersion } from './project-version.entity';
 
-/**
- * 平台專案表。
- * 依需求僅保留單一 project table 與必要欄位。
- */
 @Entity('project')
 export class Project {
   @PrimaryGeneratedColumn({ comment: '平台專案流水號 ID' })
-  id: number;
+  id!: number;
 
   @Column({
     type: 'varchar',
     length: 255,
     comment: '專案名稱',
   })
-  name: string;
+  name!: string;
 
   @Column({
     name: 'aimaker_user_id',
     type: 'int',
     comment: '此專案所屬 AIMaker user id',
   })
-  aimakerUserId: number;
+  aimakerUserId!: number;
 
   @Column({
-    name: 'aimaker_version_id',
+    name: 'aimaker_project_id',
     type: 'int',
-    comment: '此專案綁定 AIMaker version id',
+    unique: true,
+    comment: 'AIMaker 專案 ID',
   })
-  aimakerVersionId: number;
+  aimakerProjectId!: number;
 
-  @Column({
-    name: 'class_filename',
-    type: 'varchar',
-    length: 500,
-    nullable: true,
-    comment: 'AIMaker 下載後類別 json 檔名',
+  @CreateDateColumn({
+    name: 'created_at',
+    type: 'timestamptz',
+    comment: '建立時間',
   })
-  classFilename: string | null;
+  createdAt!: Date;
 
-  @Column({
-    name: 'step_filename',
-    type: 'varchar',
-    length: 500,
-    nullable: true,
-    comment: 'AIMaker 下載後步驟 json 檔名',
+  @UpdateDateColumn({
+    name: 'updated_at',
+    type: 'timestamptz',
+    comment: '最後更新時間',
   })
-  stepFilename: string | null;
+  updatedAt!: Date;
+
+  @OneToMany(() => ProjectVersion, (version) => version.project, {
+    cascade: true,
+  })
+  versions: ProjectVersion[];
 }

@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsInt, IsString, Min } from 'class-validator';
 
 export class CreatePlatformProjectBindingDto {
   @ApiProperty({ description: '平台專案名稱', example: '水果偵測平台專案' })
@@ -20,14 +20,4 @@ export class CreatePlatformProjectBindingDto {
   @IsInt()
   @Min(1)
   aimakerUserId: number;
-
-  @ApiPropertyOptional({ description: '類別檔名', example: 'classes_project20_v37.json' })
-  @IsOptional()
-  @IsString()
-  classFilename?: string;
-
-  @ApiPropertyOptional({ description: '步驟檔名', example: 'steps_project20_v37.json' })
-  @IsOptional()
-  @IsString()
-  stepFilename?: string;
 }

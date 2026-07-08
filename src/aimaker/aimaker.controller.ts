@@ -5,6 +5,7 @@ import {
   Headers,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -25,6 +26,8 @@ import { AiMakerProjectDto } from './dto/aimaker-project.dto';
 import { AiMakerVersionDto } from './dto/aimaker-version.dto';
 import { AiMakerClassApDto } from './dto/aimaker-class-ap.dto';
 import { CreatePlatformProjectBindingDto } from './dto/create-platform-project-binding.dto';
+import { UpdateProjectVersionFileDto } from './dto/update-project-version-file.dto';
+import { UpdateProjectVersionFlowDto } from './dto/update-project-version-flow.dto';
 
 @ApiTags('aimaker-proxy')
 @Controller('aimaker')
@@ -90,5 +93,52 @@ export class AiMakerController {
     @Body() dto: CreatePlatformProjectBindingDto,
   ) {
     return this.bindingService.createProjectAndBinding(dto, sessionToken);
+  }
+
+  @Get('platform-projects/user/:userId')
+  @ApiOperation({ summary: '取得指定使用者的專案選單列表' })
+  @ApiResponse({ status: 200, description: '專案列表' })
+  async getUserProjects(@Param('userId', ParseIntPipe) userId: number) {
+    return this.bindingService.listProjectsByUser(userId);
+  }
+
+  @Get('platform-projects/:id/versions')
+  @ApiOperation({ summary: '取得指定專案的所有版本與流程資料' })
+  @ApiResponse({ status: 200, description: '版本列表' })
+  async getProjectVersions(@Param('id', ParseIntPipe) projectId: number) {
+    return this.bindingService.getVersionsByProjectId(projectId);
+  }
+
+  @Patch('platform-projects/versions/:versionId/flow')
+  @ApiOperation({ summary: '更新指定版本的流程 JSON' })
+  @ApiBody({ type: UpdateProjectVersionFlowDto })
+  @ApiResponse({ status: 200, description: '流程更新成功' })
+  async updateProjectVersionFlow(
+    @Param('versionId', ParseIntPipe) versionId: number,
+    @Body() dto: UpdateProjectVersionFlowDto,
+  ) {
+    return this.bindingService.updateVersionFlow(versionId, dto.flowData);
+  }
+
+  @Patch('platform-projects/versions/:versionId/class')
+  @ApiOperation({ summary: '更新指定版本的 class JSON 資料' })
+  @ApiBody({ type: UpdateProjectVersionFileDto })
+  @ApiResponse({ status: 200, description: 'class 資料更新成功' })
+  async updateProjectVersionClass(
+    @Param('versionId', ParseIntPipe) versionId: number,
+    @Body() dto: UpdateProjectVersionFileDto,
+  ) {
+    return this.bindingService.updateVersionClassData(versionId, dto.data);
+  }
+
+  @Patch('platform-projects/versions/:versionId/step')
+  @ApiOperation({ summary: '更新指定版本的 step JSON 資料' })
+  @ApiBody({ type: UpdateProjectVersionFileDto })
+  @ApiResponse({ status: 200, description: 'step 資料更新成功' })
+  async updateProjectVersionStep(
+    @Param('versionId', ParseIntPipe) versionId: number,
+    @Body() dto: UpdateProjectVersionFileDto,
+  ) {
+    return this.bindingService.updateVersionStepData(versionId, dto.data);
   }
 }

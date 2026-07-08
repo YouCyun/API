@@ -5,7 +5,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiMakerModule } from './aimaker/aimaker.module';
-import { Project } from './database/entities';
+import { Project, ProjectVersion } from './database/entities';
 
 /**
  * DB_TYPE=disabled 時跳過 TypeORM 模組，讓應用程序在未架設 PostgreSQL
@@ -35,7 +35,7 @@ const DB_ENABLED = process.env.DB_TYPE !== 'disabled';
               username: config.get<string>('DB_USERNAME', 'postgres'),
               password: config.get<string>('DB_PASSWORD', ''),
               database: config.get<string>('DB_DATABASE', 'aimaker_platform'),
-              entities: [Project],
+              entities: [Project, ProjectVersion],
               // 僅開發環境自動同步 Schema；正式環境務必使用 Migration
               synchronize: config.get<string>('NODE_ENV') !== 'production',
               logging: config.get<string>('NODE_ENV') === 'development',

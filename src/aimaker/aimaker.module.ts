@@ -6,7 +6,7 @@ import { AiMakerAuthService } from './aimaker-auth.service';
 import { AiMakerProxyService } from './aimaker-proxy.service';
 import { AiMakerController } from './aimaker.controller';
 import { ProjectBindingService } from './project-binding.service';
-import { Project } from '../database/entities';
+import { Project, ProjectVersion } from '../database/entities';
 
 /**
  * AiMakerModule
@@ -34,15 +34,11 @@ export class AiMakerModule {
 
     // 檢查 DB_TYPE，只有 postgres 才載入 TypeOrmModule.forFeature
     const dbType = process.env.DB_TYPE;
-    if (dbType !== 'disabled') {
-      imports.push(TypeOrmModule.forFeature([Project]));
-    }
 
-    const providers: any[] = [AiMakerAuthService, AiMakerProxyService];
-    
-    // 只有 DB 可用時才提供 ProjectBindingService
+    const providers: any[] = [AiMakerAuthService, AiMakerProxyService, ProjectBindingService];
+
     if (dbType !== 'disabled') {
-      providers.push(ProjectBindingService);
+      imports.push(TypeOrmModule.forFeature([Project, ProjectVersion]));
     }
 
     return {
