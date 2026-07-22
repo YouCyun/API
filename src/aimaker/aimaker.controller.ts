@@ -45,7 +45,8 @@ export class AiMakerController {
   async login(@Body() dto: AiMakerLoginDto): Promise<AiMakerLoginResponseDto> {
     const result = await this.authService.loginAndCreateSession(dto.email, dto.password);
     return {
-      sessionToken: result.sessionToken,
+      xAimakerSession: result.sessionToken,
+      userId: result.userId,
       expiresAt: result.expiresAt.toISOString(),
     };
   }

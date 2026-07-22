@@ -3,12 +3,16 @@ import {
   Logger,
   InternalServerErrorException,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
 import { randomUUID } from 'crypto';
+import { UserMapping } from '../database/entities/user-mapping.entity';
 
 // ------------------------------------------------------------------
 // 內部型別定義
@@ -66,6 +70,8 @@ export class AiMakerAuthService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @Optional() @InjectRepository(UserMapping)
+    private readonly userMappingRepo: Repository<UserMapping> | undefined,
   ) {
     this.baseUrl = this.configService.getOrThrow<string>('AIMAKER_BASE_URL');
   }
@@ -81,15 +87,20 @@ export class AiMakerAuthService {
    * - 快取過期或不存在時自動重新驗證
    * - 並發請求會共用同一次驗證流程（避免重複登入）
    */
-  async loginAndCreateSession(email: string, password: string): Promise<LoginSessionResult> {
+  async loginAndCreateSession(email: string, password: string): Promise<LoginSessionResult & { userId: number }> {
     const cache = await this.performAuthentication(email, password);
     const sessionToken = randomUUID();
+
+    const userInfo = await this.fetchAIMakerUserInfo(cache.cookieString);
+    const userId = await this.syncUserMapping(userInfo);
+
     this.cookieCache.set(sessionToken, cache);
     this.logger.log(`[Cache] Stored session token: ${sessionToken}`);
     this.logger.log(`[Cache] Current cache size: ${this.cookieCache.size}`);
     return {
       sessionToken,
       expiresAt: cache.expiresAt,
+      userId,
     };
   }
 
@@ -133,6 +144,76 @@ export class AiMakerAuthService {
     }
     this.systemCookieCache = null;
     this.logger.warn('AIMaker session cache invalidated. Will re-authenticate on next request.');
+  }
+
+  private ensureUserMappingAvailable(): void {
+    if (!this.userMappingRepo) {
+      throw new InternalServerErrorException(
+        'User mapping repository is not available. Ensure DB_TYPE is not disabled.',
+      );
+    }
+  }
+
+  private async syncUserMapping(userInfo: { aimakerUserId: number; username: string }): Promise<number> {
+    this.ensureUserMappingAvailable();
+
+    let mapping = await this.userMappingRepo!.findOne({
+      where: { aimakerUserId: userInfo.aimakerUserId },
+    });
+
+    if (!mapping) {
+      mapping = this.userMappingRepo!.create({
+        aimakerUserId: userInfo.aimakerUserId,
+        username: userInfo.username,
+      });
+      mapping = await this.userMappingRepo!.save(mapping);
+    }
+
+    return mapping.userId;
+  }
+
+  private async fetchAIMakerUserInfo(cookie: string): Promise<{ aimakerUserId: number; username: string }> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get<{ user?: Record<string, any> }>(
+          `${this.baseUrl}/api/auth/session`,
+          {
+            headers: {
+              Cookie: cookie,
+            },
+          },
+        ),
+      );
+
+      const user = response.data?.user;
+      if (!user) {
+        throw new InternalServerErrorException(
+          'Unable to resolve AIMaker user info from /api/auth/session response.',
+        );
+      }
+
+      const rawUserId = user.id ?? user.userId ?? user.creatorId;
+      const aimakerUserId = Number(rawUserId);
+      if (!Number.isFinite(aimakerUserId) || aimakerUserId <= 0) {
+        throw new InternalServerErrorException(
+          'AIMaker user id is missing or invalid in session response.',
+        );
+      }
+
+        const username = String(user.email ?? user.name ?? user.username ?? aimakerUserId);
+      return {
+        aimakerUserId,
+        username,
+      };
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      this.logger.error('[AiMakerAuthService] Failed to fetch AIMaker user info from session.', error as Error);
+      throw new InternalServerErrorException(
+        'Failed to retrieve AIMaker user information after login.',
+      );
+    }
   }
 
   // ----------------------------------------------------------------

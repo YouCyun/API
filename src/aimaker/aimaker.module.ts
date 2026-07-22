@@ -6,7 +6,7 @@ import { AiMakerAuthService } from './aimaker-auth.service';
 import { AiMakerProxyService } from './aimaker-proxy.service';
 import { AiMakerController } from './aimaker.controller';
 import { ProjectBindingService } from './project-binding.service';
-import { Project, ProjectVersion } from '../database/entities';
+import { Project, ProjectVersion, UserMapping } from '../database/entities';
 
 /**
  * AiMakerModule
@@ -38,7 +38,7 @@ export class AiMakerModule {
     const providers: any[] = [AiMakerAuthService, AiMakerProxyService, ProjectBindingService];
 
     if (dbType !== 'disabled') {
-      imports.push(TypeOrmModule.forFeature([Project, ProjectVersion]));
+      imports.push(TypeOrmModule.forFeature([Project, ProjectVersion, UserMapping]));
     }
 
     return {
